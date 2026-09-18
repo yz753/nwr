@@ -38,7 +38,11 @@ The DLC models used by the scripts were trained by Harry. They need be copied fr
 Both scripts automatically stage in and out files before and after running the core analyses.
 
 ## Fine tune licks (LOCAL MACHINE)
-The DLC results are suboptimal. To reduce false positive, on local machine, `cd lick_detection` then `uv run main --mouse 1 --day 1.py`. On the pop-out window, draw points on the figure to crop the tongue region. This will create a lick_mask.csv and an analysing figure in the `dlc_output_tongue` folder.
+The DLC results are suboptimal. To reduce false positive, on local machine, `cd lick_detection` then 
+```bash
+uv run main.py --mouse 1 --day 1
+```
+On the pop-out window, draw points on the figure to crop the tongue region. This will create a lick_mask.csv and an analysing figure in the `dlc_output_tongue` folder.
 
 ## Bombcell curation, syncing data (EDDIE)
 For the scripts to run without error, `labels/mice_information/mouse_data.csv` and `metadata/generic_metadata.yml` should be created first in `/Volumes/INCR-NolanLab/ActiveProjects/Yiming/NWR1/ephys/derivatives`. 
