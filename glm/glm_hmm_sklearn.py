@@ -20,19 +20,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-import jax
-import jax.numpy as jnp
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import pynapple as nap
-from nemos import basis as nmo_basis
-from nemos.glm_hmm import GLMHMM
-from pynwb import NWBHDF5IO
-from sklearn.model_selection import KFold
-
 
 MODEL_NAMES = (
     "position_only",
@@ -554,6 +541,25 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    if args.command == "task-count":
+        print(task_count(args))
+        return
+    
+    global jax, jnp, plt, np, pd, nap, nmo_basis, GLMHMM, NWBHDF5IO, KFold
+    
+    import jax
+    import jax.numpy as jnp
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import pynapple as nap
+    from nemos import basis as nmo_basis
+    from nemos.glm_hmm import GLMHMM
+    from pynwb import NWBHDF5IO
+    from sklearn.model_selection import KFold
+    
     if args.command == "prepare":
         prepare(args)
     elif args.command == "fit-task":
