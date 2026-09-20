@@ -54,7 +54,7 @@ def classify(task, output_dir):
         single_unit_beh_dict = get_ramps_input(nwbfile, unit_id)
         
         cluster = single_unit_beh_dict['cluster']
-        experiment = str(path.parent.parent.parent.parent.parent.name) # this should be named as NWR1/NWR2..., it defines the cohort
+        experiment = task['experiment'] # this should be named as NWR1/NWR2..., it defines the cohort
         mouse_id, day = task['mouse'], task['day']
         
         training_or_test = single_unit_beh_dict['training_or_test']
@@ -72,6 +72,8 @@ def classify(task, output_dir):
         for trial_type in trial_types:
             for test_block in test_blocks:
                 try:
+                    print('Start processing:', experiment, mouse_id, day, task['session_type'], unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
+                    
                     ramps_tuning_fn = partial(
                         ramps.compute_ramps, 
                         range=bounds, 
@@ -128,7 +130,7 @@ def classify(task, output_dir):
                     )
                     
                     rows.append({
-                        'task_id': task['task_id'], 'nwb_path': task['nwb_path'],
+                        'nwb_path': task['nwb_path'],
                         'experiment': experiment, 'mouse': mouse_id, 'day': day,
                         'unit_id': unit_id, 'session': task['session_type'],
                         'trial_type': int(trial_type[0]), 'test_block': int(test_block[0]),
@@ -137,6 +139,8 @@ def classify(task, output_dir):
                         **si_util.make_csv(si_results_null),
                     })
                     
+                    print('Finished processing:', experiment, mouse_id, day, task['session_type'], unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
+
                 except Exception:
                     error = {'trial_type': int(trial_type[0]), 'test_block': int(test_block[0]),
                             'traceback': traceback.format_exc()}

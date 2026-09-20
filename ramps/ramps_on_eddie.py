@@ -10,6 +10,7 @@ import os
 
 DEFAULT_SOURCE = '/exports/cmvm/datastore/sbms/groups/INCR-NolanLab/ActiveProjects/Yiming/NWR1/processed'
 DEFAULT_OUTPUT = '/exports/eddie/scratch/s2155699/ephys/ramps/ramps_results'
+DEFAULT_JSONL = "/exports/eddie/scratch/s2155699/ephys/nwb_units.jsonl"
 
 
 def parse_ids(value, prefix):
@@ -86,10 +87,11 @@ def create_manifest(root, run_dir, mice, days, sessions, read_ids=read_unit_ids)
     return count
 
 
-def submit(run_dir, count, concurrency, python):
+def submit(run_dir, count, concurrency, python, hold_jid=None):
     scripts = Path(__file__).resolve().parent
     result = subprocess.check_output([
         'qsub', '-terse', '-t', f'1-{count}', '-tc', str(concurrency),
+        *(['-hold_jid', hold_jid] if hold_jid else []),
         '-o', str(run_dir / 'logs'), '-e', str(run_dir / 'logs'),
         str(scripts / 'run_ramps.sh'), str(scripts), str(run_dir), python,
     ], text=True).strip()
@@ -124,6 +126,7 @@ def submit_staging(run_dir, operation, python):
         raise RuntimeError(f'Could not parse qsub response: {result}')
     update_jobs(run_dir, **{f'{operation}_job': job_id})
     print(f'{operation} staging job {job_id}; run directory: {run_dir}')
+    return job_id
 
 
 def stage_in(run_dir, read_ids=read_unit_ids):
@@ -132,15 +135,18 @@ def stage_in(run_dir, read_ids=read_unit_ids):
         raise RuntimeError('This run is already staged; do not submit it twice')
     source_root = Path(config['source_root']).resolve(strict=True)
     scratch_root = run_dir / 'input' / config['experiment'] / 'processed'
-    mice = set(config['mice']) if config['mice'] is not None else None
-    days = set(config['days']) if config['days'] is not None else None
+    selected = json.loads((run_dir / 'selected_files.json').read_text())
     inventory = []
+    tasks = []
     # Discovery and copying execute on the staging queue.
-    for source, mouse, day, session in discover_nwbs(source_root, mice, days, config['sessions']):
-        relative = source.relative_to(source_root)
+    for entry in selected:
+        relative = Path(entry['relative_path'])
+        source = source_root / relative
         destination = scratch_root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         before = source.stat()
+        if before.st_size != entry['source_size']:
+            raise RuntimeError(f'File size changed; regenerate the unit manifest: {source}')
         subprocess.run([
             'rsync', '-rt', '--no-perms', '--no-owner', '--no-group',
             '--chmod=Du+rwx,Fu+rw', str(source), str(destination),
@@ -150,19 +156,28 @@ def stage_in(run_dir, read_ids=read_unit_ids):
             raise RuntimeError(f'Source changed during staging: {source}')
         if destination.stat().st_size != after.st_size:
             raise RuntimeError(f'Staged file size mismatch: {source}')
+        if read_ids(destination) != entry['unit_ids']:
+            raise RuntimeError(f'Unit IDs changed; regenerate the unit manifest: {source}')
+        stat = destination.stat()
+        for unit_id in entry['unit_ids']:
+            tasks.append({'task_id': len(tasks) + 1, 'nwb_path': str(destination),
+                          'unit_id': unit_id, 'mouse': entry['mouse'], 'day': entry['day'],
+                          'session_type': entry['session_type'], 'experiment': config['experiment'],
+                          'source_size': stat.st_size, 'source_mtime_ns': stat.st_mtime_ns})
         inventory.append({'source': str(source), 'scratch': str(destination),
-                          'mouse': mouse, 'day': day, 'session_type': session})
+                          'mouse': entry['mouse'], 'day': entry['day'], 'session_type': entry['session_type']})
     if not inventory:
         raise RuntimeError('No NWBs match the selection; no array submitted')
     save_json(run_dir / 'staged_files.json', inventory)
-    count = create_manifest(scratch_root, run_dir, mice, days, config['sessions'], read_ids)
+    count = len(tasks)
+    if count != config['task_count'] or not count:
+        raise RuntimeError('Unit count does not match the submitted array')
+    temporary = run_dir / 'tasks.jsonl.partial'
+    temporary.write_text(''.join(json.dumps(task) + '\n' for task in tasks))
+    temporary.replace(run_dir / 'tasks.jsonl')
     save_json(run_dir / 'stagein_complete.json', {'tasks': count, 'nwb_files': len(inventory)})
     print(f'Staging complete: {len(inventory)} NWBs, {count} unit tasks', flush=True)
-    # No array is submitted until every copy and the manifest have succeeded.
-    if not config['prepare_only']:
-        submit(run_dir, count, config['max_parallel'], config['python'])
-    else:
-        print(f'Prepared only. Submit later with --submit-run {run_dir}')
+    # Never call qsub inside a staging job. The launcher already submitted the held array.
 
 
 def submit_prepared(run_dir):
@@ -199,6 +214,7 @@ def stage_out(run_dir):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--mice')
+    p.add_argument('--unit-manifest', type=Path, help='JSONL generated by prepare_nwb_units.py', default=Path(DEFAULT_JSONL))
     p.add_argument('--days')
     p.add_argument('--all', action='store_true')
     p.add_argument('--sessions', default='VR')
@@ -244,6 +260,20 @@ def main():
     sessions = list(dict.fromkeys(x.strip() for x in a.sessions.split(',')))
     if any(x not in ('VR', 'OF') for x in sessions):
         p.error('--sessions must contain VR and/or OF')
+    if a.unit_manifest is None:
+        p.error('--unit-manifest is required for a new run')
+    from prepare_nwb_units import read_manifest
+    entries = read_manifest(a.unit_manifest)
+    selected = [e for e in entries
+                if (mice is None or int(e['mouse'][1:]) in mice)
+                and (days is None or int(e['day'][1:]) in days)
+                and e['session_type'] in sessions and e['unit_ids']]
+    if not selected:
+        p.error('No units match this selection')
+    count = sum(len(e['unit_ids']) for e in selected)
+    experiments = {e['experiment'] for e in selected}
+    if len(experiments) != 1:
+        p.error('Each run must select one experiment')
     # Lexical path handling only: do not resolve/stat/list DataStore here.
     source = Path(os.path.abspath(os.path.expanduser(str(a.data_folder))))
     stageout_root = (Path(os.path.abspath(str(a.stageout_dir))) if a.stageout_dir
@@ -252,13 +282,16 @@ def main():
     run_dir.mkdir(parents=True)
     for name in ('logs', 'tasks'):
         (run_dir / name).mkdir()
+    save_json(run_dir / 'selected_files.json', selected)
     save_json(run_dir / 'config.json', {
-        'source_root': str(source), 'experiment': source.parent.name,
+        'source_root': str(source), 'experiment': next(iter(experiments)), 'task_count': count,
         'stageout_root': str(stageout_root), 'mice': mice, 'days': days,
         'sessions': sessions, 'max_parallel': a.max_parallel,
         'prepare_only': a.prepare_only, 'python': sys.executable,
     })
-    submit_staging(run_dir, 'in', sys.executable)
+    stage_id = submit_staging(run_dir, 'in', sys.executable)
+    if not a.prepare_only:
+        submit(run_dir, count, a.max_parallel, sys.executable, hold_jid=stage_id)
 
 
 if __name__ == '__main__':
