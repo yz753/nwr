@@ -1,0 +1,1 @@
+nemos @ git+https://github.com/flatironinstitute/nemos.git@d7e08f8a67b03d515395066ad4a60ef142f6942c
