@@ -18,6 +18,6 @@ export PYTHONFAULTHANDLER=1
 export NUMBA_CACHE_DIR="$RUN_DIR/numba_cache/${JOB_ID}_${SGE_TASK_ID}"
 export MPLCONFIGDIR="$RUN_DIR/mpl_cache/${JOB_ID}_${SGE_TASK_ID}"
 mkdir -p "$NUMBA_CACHE_DIR" "$MPLCONFIGDIR"
-"$PYTHON" -u "$SCRIPT_DIR/glm_hmm_on_eddie.py" --worker "$PHASE" \
+"$PYTHON" -u "$SCRIPT_DIR/glm_hmm_sklearn_on_eddie.py" --worker "$PHASE" \
     --run-dir "$RUN_DIR" --index "$((OFFSET + SGE_TASK_ID))"
 
