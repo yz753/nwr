@@ -28,8 +28,29 @@ MODEL_NAMES = (
     "position_trial_type",
     "position_speed",
     "position_speed_trial_type",
+    "speed_trial_type",
 )
-SPEED_MODELS = {"speed_only", "position_speed", "position_speed_trial_type"}
+
+POSITION_MODELS = {
+    "position_only",
+    "position_trial_type",
+    "position_speed",
+    "position_speed_trial_type",
+}
+
+SPEED_MODELS = {
+    "speed_only",
+    "position_speed",
+    "position_speed_trial_type",
+    "speed_trial_type",
+}
+
+TRIAL_TYPE_MODELS = {
+    "trial_type_only",
+    "position_trial_type",
+    "position_speed_trial_type",
+    "speed_trial_type",
+}
 
 DEFAULT_BIN_SIZE = 0.02
 
@@ -40,7 +61,7 @@ DEFAULT_UNIT_JSONL_PATH = "/exports/eddie/scratch/s2155699/ephys/nwr/nwb_units.j
 class Candidate:
     candidate_id: int
     model_name: str
-    n_position_basis: int
+    n_position_basis: int | None
     n_speed_basis: int | None
     n_states: int
 
@@ -48,31 +69,29 @@ class Candidate:
 def candidate_table(args: argparse.Namespace) -> list[Candidate]:
     """Return every complete model/basis/state candidate in stable order."""
     candidates: list[Candidate] = []
-    candidate_id = 0
     position_sizes = range(args.position_basis_min, args.position_basis_max)
     speed_sizes = range(args.speed_basis_min, args.speed_basis_max)
     state_sizes = range(args.states_min, args.states_max)
 
     for model_name in MODEL_NAMES:
-        for n_position in position_sizes:
-            model_speed_sizes: list[int | None]
-            if model_name in SPEED_MODELS:
-                model_speed_sizes = list(speed_sizes)
-            else:
-                model_speed_sizes = [None]
-
+        model_position_sizes = (
+            position_sizes if model_name in POSITION_MODELS else [None]
+        )
+        model_speed_sizes = (
+            speed_sizes if model_name in SPEED_MODELS else [None]
+        )
+        for n_position in model_position_sizes:
             for n_speed in model_speed_sizes:
                 for n_states in state_sizes:
                     candidates.append(
                         Candidate(
-                            candidate_id=candidate_id,
+                            candidate_id=len(candidates),
                             model_name=model_name,
                             n_position_basis=n_position,
                             n_speed_basis=n_speed,
                             n_states=n_states,
                         )
                     )
-                    candidate_id += 1
     print('Prepared all candidate models to be fitted.', flush=True)
     return candidates
 
@@ -120,7 +139,7 @@ def build_basis(
     trial_type = (
         nmo_basis.IdentityEval(label="trial_type")
         if candidate.model_name
-        in {"trial_type_only", "position_trial_type", "position_speed_trial_type"}
+        in TRIAL_TYPE_MODELS
         else nmo_basis.Zero()
     )
 
@@ -252,7 +271,7 @@ def fit_task(args: argparse.Namespace) -> None:
     # calculate AIC score
     K = candidate.n_states
     p = X_validation.shape[1]
-    AIC_score = -2 * np.log(score) + 2 * (K * (p+1) + K * (K-1) + (K-1))
+    AIC_score = -2 * score + 2 * (K * (p+1) + K * (K-1) + (K-1))
 
     result: dict[str, Any] = {
         **asdict(candidate),
@@ -427,7 +446,7 @@ def aggregate(args: argparse.Namespace) -> None:
         # calculate AIC score
         K = candidate.n_states
         p = X_design.shape[1]
-        held_out_AIC_score = -2 * np.log(held_out_test_score) + 2 * (K * (p+1) + K * (K-1) + (K-1))
+        held_out_AIC_score = -2 * held_out_test_score + 2 * (K * (p+1) + K * (K-1) + (K-1))
 
         model.save_params(model_dir / f"{candidate.model_name}.npz")
         np.savez_compressed(
@@ -465,7 +484,7 @@ def aggregate(args: argparse.Namespace) -> None:
         model_plot_dir.mkdir(exist_ok=True)
         for trial_type_value in [[0], [1], [2]]:
             trials_for_plot = trial_type_intervalset[
-                trial_type_by_trial.isin(trial_type_value)
+                np.isin(trial_type_by_trial, trial_type_value)
             ]
             predicted_tc = compute_tuning_curve(predicted_rate_tsd, moving_starts, moving_ends, unit_index)
             actual_tc = compute_tuning_curve(actual_spikes, moving_starts, moving_ends, unit_index)
