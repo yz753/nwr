@@ -151,6 +151,7 @@ def classify(task, output_dir):
             tmp = output_dir / 'results.csv.tmp'
             pd.DataFrame(rows).to_csv(tmp, index=False)
             tmp.replace(output_dir / 'results.csv')
+            print('Results saved to:', output_dir / 'results.csv', flush=True)
         return rows, errors, len(trial_types) * len(test_blocks), 'complete' if not errors else 'failed'
 
 
