@@ -499,17 +499,17 @@ def aggregate(args: argparse.Namespace) -> None:
 
 
 def add_grid_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--position-basis-min", type=int, default=4)
-    parser.add_argument("--position-basis-max", type=int, default=12)
+    parser.add_argument("--position-basis-min", type=int, default=6)
+    parser.add_argument("--position-basis-max", type=int, default=13)
     parser.add_argument("--speed-basis-min", type=int, default=4)
-    parser.add_argument("--speed-basis-max", type=int, default=12)
+    parser.add_argument("--speed-basis-max", type=int, default=11)
     parser.add_argument("--states-min", type=int, default=2)
-    parser.add_argument("--states-max", type=int, default=6)
+    parser.add_argument("--states-max", type=int, default=5)
     parser.add_argument("--cv-folds", type=int, default=5)
     parser.add_argument("--test-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=12)
     parser.add_argument("--tol", type=float, default=1e-5)
-    parser.add_argument("--maxiter", type=int, default=500)
+    parser.add_argument("--maxiter", type=int, default=800)
 
 
 def parser() -> argparse.ArgumentParser:
