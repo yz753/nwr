@@ -1,7 +1,6 @@
 #!/bin/bash
 #$ -cwd
 #$ -pe sharedmem 1
-#$ -q *@@uoe_512G_56s
 
 set -euo pipefail
 SCRIPT_DIR="$1"
