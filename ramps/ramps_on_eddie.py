@@ -10,7 +10,7 @@ import os
 
 DEFAULT_SOURCE = '/exports/cmvm/datastore/sbms/groups/INCR-NolanLab/ActiveProjects/Yiming/NWR1/processed'
 DEFAULT_OUTPUT = '/exports/eddie/scratch/s2155699/ephys/ramps/ramps_results'
-DEFAULT_JSONL = "/exports/eddie/scratch/s2155699/ephys/nwb_units.jsonl"
+DEFAULT_JSONL = "/exports/eddie/scratch/s2155699/ephys/nwr/nwb_units.jsonl"
 
 
 def parse_ids(value, prefix):
