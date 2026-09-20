@@ -21,8 +21,7 @@ if __name__ == "__main__":
     combined_csv = results_root / f'ramps_classification.csv'
 
     sub_csv = sorted(
-        f for f in results_root.glob('*.csv')
-        if f'ramps_classification' not in f.name
+        f for f in results_root.rglob('*_M*_D*_unit*_results.csv')
         )
     if not sub_csv:
         raise ValueError(f"No CSV files found in {results_root}")

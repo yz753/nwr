@@ -60,8 +60,8 @@ def classify(task, output_dir):
         training_or_test = single_unit_beh_dict['training_or_test']
         bounds = (0, 200)
         reward_position = (90, 110)
-        outbound = (0, 90)
-        homebound = (110, 200)
+        outbound = (30, 90)
+        homebound = (110, 170)
         num_bins = 200
         n_shuffles = 500
         context = 'rz'
@@ -148,10 +148,10 @@ def classify(task, output_dir):
                     print(error['traceback'], flush=True)
                     
         if rows:
-            tmp = output_dir / 'results.csv.tmp'
+            tmp = output_dir / f'{experiment}_{mouse_id}_{day}_unit{unit_id}_results.csv.tmp'
             pd.DataFrame(rows).to_csv(tmp, index=False)
-            tmp.replace(output_dir / 'results.csv')
-            print('Results saved to:', output_dir / 'results.csv', flush=True)
+            tmp.replace(output_dir / f'{experiment}_{mouse_id}_{day}_unit{unit_id}_results.csv')
+            print('Results saved to:', output_dir / f'{experiment}_{mouse_id}_{day}_unit{unit_id}_results.csv', flush=True)
         return rows, errors, len(trial_types) * len(test_blocks), 'complete' if not errors else 'failed'
 
 
