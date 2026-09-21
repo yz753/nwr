@@ -23,7 +23,7 @@ def get_tc(df_row, results_root, training_or_test='test'):
         raise ValueError(f'Expected one match for {df_row.nwb_path} and unit {df_row.unit_id}, found {len(matches)}')
     
     task = matches[0]
-    task_folder = run_dir / 'tasks' / f"task_{task['task_id']:08d}"
+    task_folder = run_dir / 'tasks' / f"{task['task_id']:08d}"
     test_block = (
         'None' if pd.isna(df_row.test_block) 
         else str(int(df_row.test_block))
