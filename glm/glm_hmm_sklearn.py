@@ -313,17 +313,17 @@ def aggregate(args: argparse.Namespace) -> None:
     summary = (
         fold_df.groupby(group_columns, dropna=False, as_index=False)
         .agg(
-            mean_test_score=("score", "mean"),
-            std_test_score=("score", "std"),
+            mean_test_score=("AIC_score", "mean"),
+            std_test_score=("AIC_score", "std"),
             total_fit_seconds=("elapsed_seconds", "sum"),
         )
-        .sort_values("mean_test_score", ascending=False)
+        .sort_values("mean_test_score", ascending=True)
         .reset_index(drop=True)
     )
     summary.insert(0, "rank_test_score", np.arange(1, len(summary) + 1))
     summary["rank_within_model"] = (
         summary.groupby("model_name")["mean_test_score"]
-        .rank(method="min", ascending=False)
+        .rank(method="min", ascending=True)
         .astype(int)
     )
     summary.to_csv(output_dir / "all_cv_results.csv", index=False)
@@ -352,7 +352,7 @@ def aggregate(args: argparse.Namespace) -> None:
     
     candidates = candidate_table(args)
     best_rows = summary.loc[
-        summary.groupby("model_name")["mean_test_score"].idxmax()
+        summary.groupby("model_name")["mean_test_score"].idxmin()
     ].sort_values("model_name")
 
     model_dir = output_dir / "best_models"
