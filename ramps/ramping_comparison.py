@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import pandas as pd
 from contextlib import redirect_stdout
-from LMM_util import LMM
+# from LMM_util import LMM
 import warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
