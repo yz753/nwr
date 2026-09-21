@@ -408,7 +408,19 @@ def aggregate(args: argparse.Namespace) -> None:
             speed_bounds=speed_bounds
             ).to_transformer()
         X_train_design = train_transformer.fit_transform(X_train)
-        X_test_design = train_transformer.transform(X_test)
+        
+        # make sure the basis bounds for test data are within the trainign data bounds
+        X_test_clipped = X_test.copy()
+        if candidate.n_position_basis is not None:
+            X_test_clipped[:, 0] = np.clip(
+                X_test_clipped[:, 0], *position_bounds
+            )
+        if candidate.n_speed_basis is not None:
+            X_test_clipped[:, 1] = np.clip(
+                X_test_clipped[:, 1], *speed_bounds
+            )
+        X_test_design = train_transformer.transform(X_test_clipped)
+        
         train_model = make_model(candidate, args)
         train_model.fit(X_train_design, y_train)
         held_out_test_score = float(train_model.score(X_test_design, y_test))
@@ -568,9 +580,6 @@ def main() -> None:
     
     import jax
     import jax.numpy as jnp
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
     import pynapple as nap
@@ -584,9 +593,10 @@ def main() -> None:
     elif args.command == "fit-task":
         fit_task(args)
     elif args.command == "aggregate":
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
         aggregate(args)
-    elif args.command == "task-count":
-        print(task_count(args))
     else:
         raise AssertionError(args.command)
 
