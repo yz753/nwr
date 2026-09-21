@@ -344,6 +344,7 @@ def aggregate(args: argparse.Namespace) -> None:
         moving_starts = data["moving_starts"]
         moving_ends = data["moving_ends"]
         unit_index = int(data["unit_index"])
+        time_support = data['time_support']
         
     split_index = int((1.0 - args.test_fraction) * len(X))
     X_train, X_test = X[:split_index], X[split_index:]
@@ -449,10 +450,12 @@ def aggregate(args: argparse.Namespace) -> None:
         )
         downsampled_predicted_rate = predicted_rate * sampling_rate
         posteriors = model.smooth_proba(X_design, y)
+        
+        session_support = nap.IntervalSet(start=time_support[:,0], end=time_support[:,1])
         most_probable_states = nap.Tsd(
-            t=posteriors.t,
-            d=posteriors.values.argmax(axis=1),
-            time_support=posteriors.time_support
+            t=times,
+            d=np.asarray(posteriors).argmax(axis=1),
+            time_support=session_support
         )
         
         # calculate AIC score
@@ -487,10 +490,7 @@ def aggregate(args: argparse.Namespace) -> None:
         predicted_rate_tsd = nap.Tsd(
             t=times, 
             d=downsampled_predicted_rate,
-            time_support=nap.IntervalSet(
-                start=np.asarray(data["time_support"].time_support)[0][0], 
-                end=np.asarray(data["time_support"].time_support)[0][1]
-                )
+            time_support=session_support,
             )
         model_plot_dir = plot_dir / candidate.model_name
         model_plot_dir.mkdir(exist_ok=True)
