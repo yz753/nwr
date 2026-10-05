@@ -114,9 +114,10 @@ def classify(task, output_dir):
                     si_tuning_fn = partial(
                         spatial_information.compute_spatial_information,
                         num_bins=None, 
-                        range=None, 
-                        smooth_sigma=None, 
-                        epoch=None,
+                        range=bounds, 
+                        trial_types=trial_type, 
+                        test_blocks=test_block,
+                        epoch=None, # default smooth sigma = 2
                     )
                     si_null = wrappers.with_null_distribution(
                         si_tuning_fn, 
