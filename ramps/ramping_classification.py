@@ -62,7 +62,8 @@ def classify(task, output_dir):
         reward_position = (90, 110)
         outbound = (30, 90)
         homebound = (110, 170)
-        num_bins = 200
+        num_bins_ramps = 200
+        num_bins_si = 80
         n_shuffles = 500
         context = 'rz'
         
@@ -72,7 +73,7 @@ def classify(task, output_dir):
         for trial_type in trial_types:
             for test_block in test_blocks:
                 try:
-                    print('Start processing:', experiment, mouse_id, day, task['session_type'], unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
+                    print('Start processing:', experiment, mouse_id, day, task['session_type'], ', unit_id:', unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
                     
                     ramps_tuning_fn = partial(
                         ramps.compute_ramps, 
@@ -82,7 +83,7 @@ def classify(task, output_dir):
                         test_blocks=test_block,
                         outbound=outbound, 
                         homebound=homebound, 
-                        num_bins=num_bins,
+                        num_bins=num_bins_ramps,
                         smooth_sigma='cv', 
                         epoch=None,
                     )
@@ -113,11 +114,12 @@ def classify(task, output_dir):
                     # spatial information
                     si_tuning_fn = partial(
                         spatial_information.compute_spatial_information,
-                        num_bins=None, 
+                        num_bins=num_bins_si, 
                         range=bounds, 
                         trial_types=trial_type, 
                         test_blocks=test_block,
-                        epoch=None, # default smooth sigma = 2
+                        epoch=None,
+                        # default smooth sigma = 2
                     )
                     si_null = wrappers.with_null_distribution(
                         si_tuning_fn, 
@@ -140,7 +142,7 @@ def classify(task, output_dir):
                         **si_util.make_csv(si_results_null),
                     })
                     
-                    print('Finished processing:', experiment, mouse_id, day, task['session_type'], unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
+                    print('Finished processing:', experiment, mouse_id, day, task['session_type'], ', unit_id:', unit_id, ', trial_type:', trial_type[0], ', test_block:', test_block[0], flush=True)
 
                 except Exception:
                     error = {'trial_type': int(trial_type[0]), 'test_block': int(test_block[0]),
