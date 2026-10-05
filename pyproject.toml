@@ -181,4 +181,4 @@ dependencies = [
 [tool.uv.sources]
 nemos = { git = "https://github.com/flatironinstitute/nemos.git", rev = "94d594e76e1df2ba5b268b8fb93c62ddddbc8ecd" }
 pycircstat2 = { git = "https://github.com/circstat/pycircstat2", rev = "1336bf66a8735f4eae015abd841271f677d3d7a1" }
-pynts = { git = "https://github.com/yz753/pynts", rev = "3a6efb41a02e6ea1c3d8160331786be92b616e9e" }
+pynts = { git = "https://github.com/yz753/pynts.git", rev = "NWR1" }
