@@ -9,9 +9,11 @@ warnings.filterwarnings("ignore")
 from pathlib import Path
 import json
 
+'''This script is quite vulnerable to the results in each job folder. Each job folder shouldn't contain identical mouse, session, unit, otherwise the plots and stats will be wrong.'''
+
 
 def get_tc(df_row, results_root, training_or_test='test'):
-    run_dir = Path(results_root/'run_20260920_201338_944198')
+    run_dir = Path(results_root/'run_20261005_151042_637888')
     with (run_dir / 'tasks.jsonl').open() as f:
         tasks = [json.loads(line) for line in f if line.strip()]
     matches = [
@@ -197,17 +199,19 @@ if __name__ == "__main__":
     
     for test_block in [0,1,2]:
         for single_trial_type in [0,1]:
-            subdf = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block)]
-
-            # plot
-            print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, flush=True)
-            fig = plotter.plot_ramp_by_genotype(
-                subdf,
-                trial_type=single_trial_type,
-                test_block=test_block,
-            )
-            fig.savefig(results_root / 'figs' / f'ramping_cells_trial_type-{single_trial_type}_test_block-{test_block}.png')
-            plt.close(fig)
+            # plot separately for each mouse (right now I only have 1 mouse per genotype so comparing genotypes in one plot doesn't make much sense)
+            for mouse in ['M01', 'M02']:
+                subdf = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block) & (df['mouse'] == mouse)]
+    
+                # plot
+                print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, flush=True)
+                fig = plotter.plot_ramp_by_genotype(
+                    subdf,
+                    trial_type=single_trial_type,
+                    test_block=test_block,
+                )
+                fig.savefig(results_root / 'figs' / f'ramping_cells_{mouse}_trial_type-{single_trial_type}_test_block-{test_block}.png')
+                plt.close(fig)
             
             # mixed effect: test the 
             # plotter.run_LMM(
