@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -cwd
 #$ -q staging
-#$ -N ramps_stage
+#$ -N ramps_stagein
 #$ -l h_rt=02:00:00
 set -euo pipefail
 SCRIPT_DIR="$1"

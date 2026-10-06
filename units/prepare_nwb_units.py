@@ -38,8 +38,37 @@ def read_manifest(path):
     return entries
 
 
+def discover_nwbs(root, mice=None, days=None, sessions=('VR',)):
+    # Match directory identifiers exactly: D2 cannot select D20.
+    # Supports both session/file.nwb and session/nwb/file.nwb.
+    for mouse in sorted(root.iterdir()):
+        match = re.fullmatch(r'M(\d+)', mouse.name)
+        if not mouse.is_dir() or not match:
+            continue
+        if mice is not None and int(match[1]) not in mice:
+            continue
+        for day in sorted(mouse.iterdir()):
+            match = re.fullmatch(r'D(\d+)', day.name)
+            if not day.is_dir() or not match:
+                continue
+            if days is not None and int(match[1]) not in days:
+                continue
+            for session in sessions:
+                folder = day / session
+                if folder.is_dir():
+                    for nwb in sorted(folder.rglob('*.nwb')):
+                        if nwb.is_file() and not nwb.name.startswith('._'):
+                            yield nwb.resolve(), mouse.name, day.name, session
+
+
+def read_unit_ids(path):
+    # Standard NWB unit IDs only; dataset-specific data extraction is in the adapter.
+    import h5py
+    with h5py.File(path, 'r') as f:
+        return [] if 'units/id' not in f else [int(x) for x in f['units/id'][:]]
+    
+
 def prepare(root, output):
-    from ramps_on_eddie import discover_nwbs, read_unit_ids
     root = Path(root).resolve(strict=True)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)

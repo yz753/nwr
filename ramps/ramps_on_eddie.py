@@ -8,6 +8,12 @@ import subprocess
 import sys
 import os
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from units.prepare_nwb_units import read_manifest, read_unit_ids
+
 DEFAULT_SOURCE = '/exports/cmvm/datastore/sbms/groups/INCR-NolanLab/ActiveProjects/Yiming/NWR1/processed'
 DEFAULT_OUTPUT = '/exports/eddie/scratch/s2155699/ephys/ramps/ramps_results'
 DEFAULT_JSONL = "/exports/eddie/scratch/s2155699/ephys/nwr/nwb_units.jsonl"
@@ -23,68 +29,6 @@ def parse_ids(value, prefix):
             raise ValueError(f'Invalid {prefix} identifier: {item!r}')
         result.add(int(item))
     return result
-
-
-def discover_nwbs(root, mice=None, days=None, sessions=('VR',)):
-    # Match directory identifiers exactly: D2 cannot select D20.
-    # Supports both session/file.nwb and session/nwb/file.nwb.
-    for mouse in sorted(root.iterdir()):
-        match = re.fullmatch(r'M(\d+)', mouse.name)
-        if not mouse.is_dir() or not match:
-            continue
-        if mice is not None and int(match[1]) not in mice:
-            continue
-        for day in sorted(mouse.iterdir()):
-            match = re.fullmatch(r'D(\d+)', day.name)
-            if not day.is_dir() or not match:
-                continue
-            if days is not None and int(match[1]) not in days:
-                continue
-            for session in sessions:
-                folder = day / session
-                if folder.is_dir():
-                    for nwb in sorted(folder.rglob('*.nwb')):
-                        if nwb.is_file() and not nwb.name.startswith('._'):
-                            yield nwb.resolve(), mouse.name, day.name, session
-
-
-def read_unit_ids(path):
-    # Standard NWB unit IDs only; dataset-specific data extraction is in the adapter.
-    import h5py
-    with h5py.File(path, 'r') as f:
-        return [] if 'units/id' not in f else [int(x) for x in f['units/id'][:]]
-
-
-def create_manifest(root, run_dir, mice, days, sessions, read_ids=read_unit_ids):
-    count = 0
-    files = []
-    seen_pairs = set()
-    manifest = run_dir / 'tasks.jsonl.partial'
-    with manifest.open('w') as out:
-        for path, mouse, day, session in discover_nwbs(root, mice, days, sessions):
-            ids = read_ids(path)
-            if len(ids) != len(set(ids)):
-                raise ValueError(f'Duplicate unit IDs in {path}')
-            stat = path.stat()
-            files.append({'path': str(path), 'mouse': mouse, 'day': day,
-                          'session_type': session, 'unit_count': len(ids)})
-            print(f'{mouse} {day} {session}: {path.name}: {len(ids)} units', flush=True)
-            for unit_id in ids:
-                pair = (str(path), unit_id)
-                if pair in seen_pairs:
-                    raise ValueError(f'Duplicate file/unit: {pair}')
-                seen_pairs.add(pair)
-                count += 1
-                task = {'task_id': count, 'nwb_path': str(path), 'unit_id': unit_id,
-                        'mouse': mouse, 'day': day, 'session_type': session,
-                        'source_size': stat.st_size, 'source_mtime_ns': stat.st_mtime_ns,
-                        'experiment': root.parent.name}
-                out.write(json.dumps(task) + '\n')
-    (run_dir / 'files.json').write_text(json.dumps(files, indent=2))
-    if not count:
-        raise ValueError('No units found for the selection; nothing submitted')
-    manifest.replace(run_dir / 'tasks.jsonl')
-    return count
 
 
 def submit(run_dir, count, concurrency, python, hold_jid=None):
@@ -119,7 +63,7 @@ def submit_staging(run_dir, operation, python):
     result = subprocess.check_output([
         'qsub', '-terse', '-N', f'ramps_{operation}',
         '-o', str(run_dir / 'logs'), '-e', str(run_dir / 'logs'),
-        str(scripts / 'stage_ramps.sh'), str(scripts), str(run_dir), python, operation,
+        str(scripts / 'stagein_ramps.sh'), str(scripts), str(run_dir), python, operation,
     ], text=True).strip()
     job_id = result.split('.')[0]
     if not job_id.isdigit():
@@ -220,7 +164,7 @@ def main():
     p.add_argument('--sessions', default='VR')
     p.add_argument('--data_folder', type=Path, default=Path(DEFAULT_SOURCE))
     p.add_argument('--output_dir', type=Path, default=Path(DEFAULT_OUTPUT))
-    p.add_argument('--max_parallel', type=int, default=100)
+    p.add_argument('--max_parallel', type=int, default=500)
     p.add_argument('--prepare-only', action='store_true', help='Stage inputs and build manifest without an array')
     p.add_argument('--stageout_dir', type=Path, help='Default: DATASET/ramps_results on DataStore')
     actions = p.add_mutually_exclusive_group()
@@ -262,7 +206,6 @@ def main():
         p.error('--sessions must contain VR and/or OF')
     if a.unit_manifest is None:
         p.error('--unit-manifest is required for a new run')
-    from prepare_nwb_units import read_manifest
     entries = read_manifest(a.unit_manifest)
     selected = [e for e in entries
                 if (mice is None or int(e['mouse'][1:]) in mice)
