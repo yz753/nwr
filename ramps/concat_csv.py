@@ -6,8 +6,8 @@ import numpy as np
 class GenotypeMapping:
     genotype_dict = {
         'NWR1': {
-            'M1': 'NA',
-            'M2': 'NA',
+            'M1': 'WT',
+            'M2': 'FXS',
         },
     }
     
