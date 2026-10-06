@@ -10,6 +10,6 @@
 set -euo pipefail
 
 PYTHON="/exports/eddie/scratch/s2155699/ephys/nwr/.venv/bin/python"
-SCRIPT="ramping_comparison.py"
+SCRIPT="/exports/eddie/scratch/s2155699/ephys/nwr/ramps/ramping_comparison.py"
 
 "$PYTHON" -u "$SCRIPT"
