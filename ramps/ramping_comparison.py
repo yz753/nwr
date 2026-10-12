@@ -7,7 +7,13 @@ from contextlib import redirect_stdout
 import warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
-import json
+import json, sys
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from util import Genotype_Info
 
 '''This script is quite vulnerable to the results in each job folder. Each job folder shouldn't contain identical mouse, session, unit, otherwise the plots and stats will be wrong.'''
 
@@ -48,14 +54,11 @@ def get_tc(df_row, results_root, training_or_test='test'):
 
 class MakingPlot:
     ramp_types = ['++', '+-', '-+', '--']
-    # genotypes = ['WT', 'FXS']
+    genotypes = ['WT', 'FXS']
     
-    # genotype_colour_dict = {
-    #     'WT': "#8E8EE0",
-    #     'FXS': '#FCB94B'
-    # }
+    genotype_colour_dict = Genotype_Info.genotype_colour_dict
         
-    def plot_ramp_by_genotype(self, df, trial_type, test_block):
+    def plot_ramp_by_genotype(self, df, trial_type, test_block): # both genotypes in one plot
         fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True, sharey=False)
         axes = axes.ravel()
         
@@ -73,18 +76,71 @@ class MakingPlot:
             ax.axvspan(0, 30, color='lightgrey', alpha=0.5, zorder=0)
             ax.axvspan((track_length-30), track_length, color='lightgrey', alpha=0.5, zorder=0)
             
-            # for g in self.genotypes:
-            #     sub_g = sub[sub['genotype'] == g]
-            #     if sub_g.empty:
-            #         continue
+            for g in self.genotypes:
+                sub_g = sub[sub['genotype'] == g]
+                if sub_g.empty:
+                    continue
                 
+                mean_tc = np.nanmean(np.stack(sub_g['tc']), axis=0)
+                # get SEM
+                sem_tc = np.nanstd(np.stack(sub_g['tc']), axis=0) / np.sqrt(len(sub_g))
+                
+                y_vals.append((mean_tc + sem_tc)[5:-5])  # ignore the first and last 5 bins (the large outliers are often at the edges)
+                
+                genotype_colour = self.genotype_colour_dict.get(g)
+                ax.plot(
+                    sub_g.iloc[0]['location'], 
+                    mean_tc, 
+                    # label=g, 
+                    color=genotype_colour,
+                    zorder=3
+                    )
+                ax.fill_between(
+                    sub_g.iloc[0]['location'], 
+                    mean_tc - sem_tc, 
+                    mean_tc + sem_tc, 
+                    alpha=0.3,
+                    color=genotype_colour,
+                    zorder=2
+                )
+            ax.set_title(rt)
+            # set y limit for each subplot
+            if y_vals:
+                ymax = np.nanmax(np.concatenate(y_vals)) * 1.1
+                ax.set_ylim(0, ymax)
+            
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper right')
+        fig.suptitle(f'{test_block}: ramping cells trial type {trial_type}')
+        fig.tight_layout()
+        
+        return fig
+    
+    
+    def plot_ramp(self, df, trial_type, test_block): # genotype as separate plots
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True, sharey=False)
+        axes = axes.ravel()
+        
+        for ax, rt in zip(axes, self.ramp_types):
+            sub = df[df['ramp_type'] == rt]
+            if sub.empty:
+                ax.set_title(f'{rt} (No Data)')
+                continue
+            # initiate y vals, this will be used to prevent the y axis from being too large to include extreme outliers but masking out the trends of ramps
+            y_vals = []
+            
+            rz = (90, 110)
+            track_length = 200
+            ax.axvspan(rz[0], rz[1], color='lightgreen', alpha=0.5, zorder=0)
+            ax.axvspan(0, 30, color='lightgrey', alpha=0.5, zorder=0)
+            ax.axvspan((track_length-30), track_length, color='lightgrey', alpha=0.5, zorder=0)
+            
             mean_tc = np.nanmean(np.stack(sub['tc']), axis=0)
             # get SEM
             sem_tc = np.nanstd(np.stack(sub['tc']), axis=0) / np.sqrt(len(sub))
             
             y_vals.append((mean_tc + sem_tc)[5:-5])  # ignore the first and last 5 bins (the large outliers are often at the edges)
             
-            # genotype_colour = self.genotype_colour_dict.get(g)
             ax.plot(
                 sub.iloc[0]['location'], 
                 mean_tc, 
@@ -199,19 +255,30 @@ if __name__ == "__main__":
     
     for test_block in [0,1,2]:
         for single_trial_type in [0,1]:
-            # plot separately for each mouse (right now I only have 1 mouse per genotype so comparing genotypes in one plot doesn't make much sense)
-            for mouse in ['M01', 'M02']:
-                subdf = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block) & (df['mouse'] == mouse)]
+            # plot separately for each mouse
+            for mouse in df['mouse'].unique().tolist():
+                subdf_mouse = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block) & (df['mouse'] == mouse)]
     
                 # plot
-                print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, flush=True)
-                fig = plotter.plot_ramp_by_genotype(
-                    subdf,
+                print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, ', mouse_id:', mouse, flush=True)
+                fig = plotter.plot_ramp(
+                    subdf_mouse,
                     trial_type=single_trial_type,
                     test_block=test_block,
                 )
                 fig.savefig(results_root / 'figs' / f'ramping_cells_{mouse}_trial_type-{single_trial_type}_test_block-{test_block}.png')
                 plt.close(fig)
+                
+            # combine all mice
+            subdf = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block)]
+            print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, ', all mice', flush=True)
+            fig = plotter.plot_ramp_by_gentype(
+                subdf,
+                trial_type=single_trial_type,
+                test_block=test_block,
+            )
+            fig.savefig(results_root / 'figs' / f'ramping_cells_trial_type-{single_trial_type}_test_block-{test_block}.png')
+            plt.close(fig)
             
             # mixed effect: test the 
             # plotter.run_LMM(
