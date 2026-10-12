@@ -3,7 +3,7 @@
 #$ -N ramping_comparison
 #$ -pe sharedmem 1
 #$ -l h_rss=4G
-#$ -l h_rt=00:30:00
+#$ -l h_rt=01:00:00
 #$ -o /exports/eddie/scratch/s2155699/ephys/ramps/ramping_comparison_logs
 #$ -e /exports/eddie/scratch/s2155699/ephys/ramps/ramping_comparison_logs
 
