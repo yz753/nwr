@@ -272,7 +272,7 @@ if __name__ == "__main__":
             # combine all mice
             subdf = df[(df['trial_type'] == single_trial_type) & (df['test_block'] == test_block)]
             print('Making figures... Trial_type:', single_trial_type, ', test_block:', test_block, ', all mice', flush=True)
-            fig = plotter.plot_ramp_by_gentype(
+            fig = plotter.plot_ramp_by_genotype(
                 subdf,
                 trial_type=single_trial_type,
                 test_block=test_block,
