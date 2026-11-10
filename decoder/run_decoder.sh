@@ -5,7 +5,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Edit these defaults, then submit with: bash decoder/run_decoder.sh --all
-export DECODER_OUTPUT_DIR="${DECODER_OUTPUT_DIR:-/exports/eddie/scratch/s2155699/ephys/decoder}"
+export DECODER_OUTPUT_DIR="${DECODER_OUTPUT_DIR:-/exports/eddie/scratch/s2155699/ephys/decoder_results}"
 export DECODER_LOSS_FN="${DECODER_LOSS_FN:-wasserstein}"
 PYTHON="${DECODER_PYTHON:-python}"
 export MPLBACKEND=Agg

@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--mice', nargs='+', help='e.g. M1 M2 or M1,M2')
     parser.add_argument('--days', nargs='+', help='e.g. D2 D3 or D2,D3')
     parser.add_argument('--output-dir', type=Path, default=Path(os.environ.get(
-        'DECODER_OUTPUT_DIR', '/exports/eddie/scratch/s2155699/ephys/decoder')))
+        'DECODER_OUTPUT_DIR', '/exports/eddie/scratch/s2155699/ephys/decoder_results')))
     parser.add_argument('--loss-fn', choices=['wasserstein', 'cross_entropy'],
                         default=os.environ.get('DECODER_LOSS_FN', 'wasserstein'))
     parser.add_argument('--phase', choices=['stage', 'fit'], help=argparse.SUPPRESS)
