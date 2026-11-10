@@ -20,7 +20,7 @@ if [[ "${1:-}" == stage || "${1:-}" == fit ]]; then
     SCRIPT_DIR="${DECODER_SCRIPT_DIR:?Missing submitted script directory}"
     export MPLCONFIGDIR="${TMPDIR:-/tmp}/decoder_mpl_${JOB_ID}_${SGE_TASK_ID:-0}"
     export NUMBA_CACHE_DIR="${TMPDIR:-/tmp}/decoder_numba_${JOB_ID}_${SGE_TASK_ID:-0}"
-    exec "$PYTHON" -u "$SCRIPT_DIR/run_on_eddie.py" --phase "$PHASE" \
+    exec "$PYTHON" -u "$SCRIPT_DIR/decoder_on_eddie.py" --phase "$PHASE" \
         --tasks "$TASKS" --output-dir "$OUTPUT" --loss-fn "$LOSS"
 fi
-exec "$PYTHON" -u "$SCRIPT_DIR/run_on_eddie.py" "$@"
+exec "$PYTHON" -u "$SCRIPT_DIR/decoder_on_eddie.py" "$@"
