@@ -324,7 +324,7 @@ def decode(
                             tuning_curves = nap.compute_tuning_curves(
                                 clusters,
                                 behaviour["P"],
-                                bins=edges,
+                                bins=n_position_bins,
                                 epochs=combine_epochs(train_trials),
                             )
                             tuning_curves = tuning_curves.clip(min=1e-8)
@@ -347,7 +347,7 @@ def decode(
                                     data=clusters,
                                     epochs=trial["epochs"],
                                     bin_size=bin_size,
-                                    sliding_window_size=4, # a bit of smoothing
+                                    sliding_window_size=2, # a bit of smoothing
                                 )
                                 decoded = np.asarray(prediction.d)
                                 probability = np.asarray(probability.d)

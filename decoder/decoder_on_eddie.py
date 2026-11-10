@@ -25,8 +25,8 @@ def read_tasks(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--all', action='store_true')
-    parser.add_argument('--mice', nargs='+', help='e.g. M1 M2 or M1,M2')
-    parser.add_argument('--days', nargs='+', help='e.g. D2 D3 or D2,D3')
+    parser.add_argument('--mice', nargs='+', help='e.g. M1 M2 or M1,M2 or 1,2')
+    parser.add_argument('--days', nargs='+', help='e.g. D2 D3 or D2,D3 or 2,3')
     parser.add_argument('--output-dir', type=Path, default=Path(os.environ.get(
         'DECODER_OUTPUT_DIR', '/exports/eddie/scratch/s2155699/ephys/decoder_results')))
     parser.add_argument('--loss-fn', choices=['wasserstein', 'cross_entropy'],
@@ -59,8 +59,15 @@ def main():
         from output import save_and_plot
         torch.set_num_threads(1)
         print(f'Starting {task["experiment"]} M{task["mouse"]} D{task["day"]}', flush=True)
-        result = decode(task, output_dir=args.output_dir, loss_fn=args.loss_fn,
-                        seed=0, bin_size=0.1, n_position_bins=100, n_epochs=200)
+        result = decode(
+            task, 
+            output_dir=args.output_dir, 
+            loss_fn=args.loss_fn,
+            seed=0, 
+            bin_size=0.02, 
+            n_position_bins=200, 
+            n_epochs=200,
+        )
         save_and_plot(result, args.output_dir)
         print(f'Finished.', flush=True)
         return
