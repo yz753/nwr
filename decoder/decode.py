@@ -292,7 +292,7 @@ def decode(
         n_units = len(clusters)
 
         behaviour = get_ramps_input(nwb, next(iter(clusters.keys())))
-        trials = prepare_trials(nwb, behaviour, bin_size, bounds)
+        trials = prepare_trials(nwb, behaviour, bin_size)
 
         for trial_type in (0, 1):
             selected = [

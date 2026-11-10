@@ -49,8 +49,8 @@ def save_and_plot(result, output_dir):
             np.savez_compressed(folder / f"{prefix}.npz",
                 **{c: samples[c].to_numpy() for c in samples},
                 probability=run["probability"],
-                train_trial_ids=run["train_trial_ids"],
-                test_trial_ids=run["test_trial_ids"],
+                train_trials=run["train_trials"],
+                test_trials=run["test_trials"],
                 **{key: value for key, value in metadata.items() if key not in samples.columns},
             )
             summaries.append(run["summary"])

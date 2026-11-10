@@ -11,6 +11,12 @@ import sys
 SOURCE = Path('/exports/cmvm/datastore/sbms/groups/INCR-NolanLab/ActiveProjects/Yiming/NWR1/processed')
 MANIFEST = Path('/exports/eddie/scratch/s2155699/ephys/nwr/nwb_units.jsonl')
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from PATHS import INPUT_ROOT
+
 
 def read_tasks(path):
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
@@ -38,8 +44,11 @@ def main():
             for task in tasks:
                 target = Path(task['nwb_path'])
                 target.parent.mkdir(parents=True, exist_ok=True)
-                subprocess.run(['rsync', '-rt', str(SOURCE / task['relative_path']),
-                                str(target)], check=True)
+                subprocess.run([
+                    'rsync', '-rt', '--ignore-times',
+                    str(SOURCE / task['relative_path']),
+                    str(target),
+                ], check=True)
             ready.touch()
             return
         if not ready.exists():
@@ -87,7 +96,7 @@ def main():
     run = output / 'logs' / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     run.mkdir(parents=True)
     for task in tasks:
-        task['nwb_path'] = str(run / 'input' / task['relative_path'])
+        task['nwb_path'] = str(INPUT_ROOT / task['relative_path'])
     manifest = run / 'tasks.jsonl'
     manifest.write_text(''.join(json.dumps(t) + '\n' for t in tasks))
     script = Path(__file__).with_name('run_decoder.sh').resolve()
