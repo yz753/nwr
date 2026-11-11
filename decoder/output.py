@@ -29,15 +29,14 @@ def plot_trial_rmse(summary, path, metadata):
         plt.close(fig)
         
         
-def plot_decoded_position(samples, path, metadata):
+def plot_decoded_position(samples, path, metadata, block_change_time):
     samples = samples.sort_values("time").reset_index(drop=True)
     bin_size = metadata['bin_size']
-    block_change_time = metadata['block_change_time']
 
     fig, ax = plt.subplots(figsize=(15, 4))
     
     try:
-        for i, timestamp in enumerate(block_change_time):
+        for timestamp in block_change_time:
             ax.axvline(timestamp, color="grey", linestyle="--", linewidth=1,)
             
         new_segment = (
@@ -103,7 +102,7 @@ def save_and_plot(result, output_dir):
                 **{key: value for key, value in metadata.items() if key not in samples.columns},
             )
             summaries.append(run["summary"])
-            plot_decoded_position(samples, folder / f"{prefix}_decoded_position.png", metadata)
+            plot_decoded_position(samples, folder / f"{prefix}_decoded_position.png", metadata, run["block_change_time"])
             plot_trial_rmse(run["summary"], folder / f"{prefix}_trial_rmse.png", metadata)
         except Exception as exc:
             error = {
