@@ -306,6 +306,7 @@ def decode(
                     'trial_type': trial_type,
                     'scheme': scheme,
                     'n_units': n_units,
+                    'block_change_time': behaviour['test_block']['end'][:2], # exclude session start & ending time
                 }
                 
                 try:

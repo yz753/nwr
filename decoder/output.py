@@ -29,33 +29,45 @@ def plot_trial_rmse(summary, path, metadata):
         plt.close(fig)
         
         
-def plot_decoded_position(summary, samples, path, metadata):
-    fig, ax = plt.subplots(figsize=(15, 4))
-    summary = summary.sort_values("trial").reset_index(drop=True)
-    blocks = summary.test_block.to_numpy()
-    boundaries = np.flatnonzero(blocks[1:] != blocks[:-1]) + 1
-    try:
-        for boundary in boundaries:
-            ax.axvline(boundary - .5, color="grey", ls="--", lw=1)
-            
-        for i, (_, trial) in enumerate(samples.groupby("trial", sort=False)):
-            trial = trial.sort_values("time")
+def plot_decoded_position(samples, path, metadata):
+    samples = samples.sort_values("time").reset_index(drop=True)
+    bin_size = metadata['bin_size']
+    block_change_time = metadata['block_change_time']
 
+    fig, ax = plt.subplots(figsize=(15, 4))
+    
+    try:
+        for i, timestamp in enumerate(block_change_time):
+            ax.axvline(timestamp, color="grey", linestyle="--", linewidth=1,)
+            
+        new_segment = (
+            samples["trial"].ne(samples["trial"].shift())
+            | samples["time"].diff().gt(1.5 * bin_size)
+        )
+
+        for i, (_, segment) in enumerate(
+            samples.groupby(new_segment.cumsum(), sort=False)
+        ):
             ax.plot(
-                trial["time"], trial["true_position"],
-                color="black", linewidth=1.2,
+                segment["time"], segment["true_position"],
+                color="black", linewidth=0.8,
                 label="real position" if i == 0 else None,
             )
-            ax.plot(
-                trial["time"], trial["decoded_position"],
-                color="C1", linewidth=0.8, alpha=0.75,
-                label="decoded position" if i == 0 else None,
-            )
+
+        ax.scatter(
+            samples["time"], samples["decoded_position"],
+            s=2, color="C1", alpha=0.5, linewidths=0,
+            label="decoded position",
+        )
 
         ax.set(
             xlabel="time",
             ylabel="position",
-            title=f'decoded position for M{metadata["mouse"]} D{metadata["day"]} trial_type{metadata["trial_type"]} {metadata["decoder"]} decoder',
+            title=(
+                f'M{metadata["mouse"]} D{metadata["day"]} '
+                f'trial_type {metadata["trial_type"]} '
+                f'{metadata["scheme"]} {metadata["decoder"]}'
+            ),
         )
         ax.legend()
         fig.tight_layout()
@@ -91,7 +103,7 @@ def save_and_plot(result, output_dir):
                 **{key: value for key, value in metadata.items() if key not in samples.columns},
             )
             summaries.append(run["summary"])
-            plot_decoded_position(run["summary"], samples, folder / f"{prefix}_decoded_position.png", metadata)
+            plot_decoded_position(samples, folder / f"{prefix}_decoded_position.png", metadata)
             plot_trial_rmse(run["summary"], folder / f"{prefix}_trial_rmse.png", metadata)
         except Exception as exc:
             error = {
