@@ -33,7 +33,7 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
     samples = samples.sort_values("time").reset_index(drop=True)
     bin_size = metadata['bin_size']
 
-    fig, ax = plt.subplots(figsize=(15, 4))
+    fig, ax = plt.subplots(figsize=(30, 4))
     
     try:
         for timestamp in block_change_time:
@@ -53,10 +53,10 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
                 label="real position" if i == 0 else None,
             )
 
-        ax.scatter(
+        ax.plot(
             samples["time"], samples["decoded_position"],
-            s=2, color="C1", alpha=0.5, linewidths=0,
-            label="decoded position",
+            s=2, color="C1", alpha=0.6, linewidths=0.5,
+            label="decoded position" if i == 0 else None,
         )
 
         ax.set(
@@ -70,7 +70,7 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
         )
         ax.legend()
         fig.tight_layout()
-        fig.savefig(path, dpi=200)
+        fig.savefig(path, dpi=400)
     finally:
         plt.close(fig)
     
