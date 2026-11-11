@@ -52,12 +52,16 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
 
         ax.scatter(
             samples["time"], samples["decoded_position"],
-            s=7, color="C1", alpha=0.6, linewidths=0,
+            s=8, color="C1", alpha=0.6, linewidths=0,
             label="decoded position",
         )
         for timestamp in block_change_time:
             ax.axvline(timestamp, color="blue", linestyle="--", linewidth=1,)
-            
+    
+        ax.axhspan(90, 110, color='lightgreen', alpha=0.5)
+        ax.axhspan(0, 30, color='lightgrey', alpha=0.5)
+        ax.axhspan(170, 200, color='lightgrey', alpha=0.5)
+        
         ax.set(
             xlabel="time",
             ylabel="position",
@@ -67,7 +71,7 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
                 f'{metadata["scheme"]} {metadata["decoder"]}'
             ),
         )
-        ax.legend()
+        ax.legend(bbox_to_anchor = (1, 1), frameon=False)
         fig.tight_layout()
         fig.savefig(path, dpi=400)
     finally:
