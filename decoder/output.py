@@ -55,7 +55,7 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
 
         ax.plot(
             samples["time"], samples["decoded_position"],
-            s=2, color="C1", alpha=0.6, linewidths=0.5,
+            color="C1", alpha=0.6, linewidths=0.5,
             label="decoded position" if i == 0 else None,
         )
 
