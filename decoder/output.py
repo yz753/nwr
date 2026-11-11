@@ -5,27 +5,64 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_trial_rmse(summary, path):
+def plot_trial_rmse(summary, path, metadata):
     summary = summary.sort_values("trial").reset_index(drop=True)
     x = np.arange(len(summary))
     blocks = summary.test_block.to_numpy()
     boundaries = np.flatnonzero(blocks[1:] != blocks[:-1]) + 1
     fig, ax = plt.subplots(figsize=(12, 4))
     try:
-        for idx in np.split(x, boundaries):
-            ax.plot(idx, summary.loc[idx, "rmse_cm"], "o-", ms=4, color="C0")
         for boundary in boundaries:
             ax.axvline(boundary - .5, color="grey", ls="--", lw=1)
+            
+        for idx in np.split(x, boundaries):
+            ax.plot(idx, summary.loc[idx, "rmse_cm"], "o-", ms=4, color="C0")
+
         ticks = x[::max(1, int(np.ceil(len(x) / 30)))]
         ax.set_xticks(ticks)
         ax.set_xticklabels(summary.loc[ticks, "trial"].astype(int), rotation=90)
-        ax.set(xlabel="Test trial ID (equally spaced)", ylabel="RMSE (cm)",
-               title=Path(path).stem)
+        ax.set(xlabel="test trial idx", ylabel="RMSE (cm)",
+               title=f'RMSE for M{metadata["mouse"]} D{metadata["day"]} trial_type{metadata["trial_type"]} {metadata["decoder"]} decoder')
         fig.tight_layout()
         fig.savefig(path, dpi=200)
     finally:
         plt.close(fig)
         
+        
+def plot_decoded_position(samples, path, metadata):
+    fig, ax = plt.subplots(figsize=(15, 4))
+    summary = summary.sort_values("trial").reset_index(drop=True)
+    blocks = summary.test_block.to_numpy()
+    boundaries = np.flatnonzero(blocks[1:] != blocks[:-1]) + 1
+    try:
+        for boundary in boundaries:
+            ax.axvline(boundary - .5, color="grey", ls="--", lw=1)
+            
+        for i, (_, trial) in enumerate(samples.groupby("trial", sort=False)):
+            trial = trial.sort_values("time")
+
+            ax.plot(
+                trial["time"], trial["true_position"],
+                color="black", linewidth=1.2,
+                label="real position" if i == 0 else None,
+            )
+            ax.plot(
+                trial["time"], trial["decoded_position"],
+                color="C1", linewidth=0.8, alpha=0.75,
+                label="decoded position" if i == 0 else None,
+            )
+
+        ax.set(
+            xlabel="time",
+            ylabel="position",
+            title=f'decoded position for M{metadata["mouse"]} D{metadata["day"]} trial_type{metadata["trial_type"]} {metadata["decoder"]} decoder',
+        )
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(path, dpi=200)
+    finally:
+        plt.close(fig)
+    
         
 def save_and_plot(result, output_dir):
     """Write one decode() result. Array workers must pass unique output dirs."""
@@ -54,7 +91,8 @@ def save_and_plot(result, output_dir):
                 **{key: value for key, value in metadata.items() if key not in samples.columns},
             )
             summaries.append(run["summary"])
-            plot_trial_rmse(run["summary"], folder / f"{prefix}_trial_rmse.png")
+            plot_decoded_position(samples, folder / f"{prefix}_decoded_position.png", metadata)
+            plot_trial_rmse(run["summary"], folder / f"{prefix}_trial_rmse.png", metadata)
         except Exception as exc:
             error = {
                 "info": metadata,
