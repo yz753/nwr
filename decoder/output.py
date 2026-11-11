@@ -12,11 +12,11 @@ def plot_trial_rmse(summary, path, metadata):
     boundaries = np.flatnonzero(blocks[1:] != blocks[:-1]) + 1
     fig, ax = plt.subplots(figsize=(12, 4))
     try:
-        for boundary in boundaries:
-            ax.axvline(boundary - .5, color="blue", ls="--", lw=1)
-            
         for idx in np.split(x, boundaries):
             ax.plot(idx, summary.loc[idx, "rmse_cm"], "o-", ms=4, color="black")
+            
+        for boundary in boundaries:
+            ax.axvline(boundary - .5, color="blue", ls="--", lw=1)
 
         ticks = x[::max(1, int(np.ceil(len(x) / 30)))]
         ax.set_xticks(ticks)
@@ -33,12 +33,9 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
     samples = samples.sort_values("time").reset_index(drop=True)
     bin_size = metadata['bin_size']
 
-    fig, ax = plt.subplots(figsize=(25, 4))
+    fig, ax = plt.subplots(figsize=(30, 4))
     
     try:
-        for timestamp in block_change_time:
-            ax.axvline(timestamp, color="blue", linestyle="--", linewidth=1,)
-            
         new_segment = (
             samples["trial"].ne(samples["trial"].shift())
             | samples["time"].diff().gt(1.5 * bin_size)
@@ -55,10 +52,12 @@ def plot_decoded_position(samples, path, metadata, block_change_time):
 
         ax.scatter(
             samples["time"], samples["decoded_position"],
-            s=3, color="C1", alpha=0.5, linewidths=0,
+            s=7, color="C1", alpha=0.6, linewidths=0,
             label="decoded position",
         )
-
+        for timestamp in block_change_time:
+            ax.axvline(timestamp, color="blue", linestyle="--", linewidth=1,)
+            
         ax.set(
             xlabel="time",
             ylabel="position",
