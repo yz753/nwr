@@ -306,6 +306,7 @@ def decode(
                     'trial_type': trial_type,
                     'scheme': scheme,
                     'n_units': n_units,
+                    'bin_size': bin_size,
                 }
                 
                 try:
