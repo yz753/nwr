@@ -64,7 +64,7 @@ def main():
             output_dir=args.output_dir, 
             loss_fn=args.loss_fn,
             seed=0, 
-            bin_size=0.02, 
+            bin_size=0.1, 
             n_position_bins=200, 
             n_epochs=200,
         )

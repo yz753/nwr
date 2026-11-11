@@ -348,7 +348,7 @@ def decode(
                                     data=clusters,
                                     epochs=trial["epochs"],
                                     bin_size=bin_size,
-                                    sliding_window_size=2, # a bit of smoothing
+                                    # sliding_window_size=2, # a bit of smoothing
                                 )
                                 decoded = np.asarray(prediction.d)
                                 probability = np.asarray(probability.d)
