@@ -1,7 +1,7 @@
 # Spikesorting, preprocessing & analysis for NWR1 dataset
 
 ## Run spikesorting (EDDIE)
-First, all NP recording filepaths should be stored in `nolanlab-ephys/scripts/yimingyiming_filepaths.csv`. To do this, in `nolanlab-ephys/scripts/yiming`, run
+First, all NP recording filepaths should be stored in `nolanlab-ephys/scripts/yiming/yiming_filepaths.csv`. To do this, in `nolanlab-ephys/scripts/yiming`, run
 ```bash
 uv run write_filepaths.py
 ```
@@ -49,7 +49,7 @@ For the scripts to run without error, `labels/mice_information/mouse_data.csv` a
 
 First, stage in all necessary files.
 ```bash
-qsub scripts/preprocessing/HPC/stagein.sh M1 VR D1 D2 D3 ...
+qsub scripts/preprocessing/HPC/stagein.sh M1 kilosort4A VR D1 D2 D3 ...
 ```
 Unfortunately, my current `stagein.sh` does not accept processing multiple mice.
 
@@ -79,6 +79,12 @@ io = NWBHDF5IO(
 
 example_nwb = nap.NWBFile(io.read())
 units = example_mwb['units']
+```
+
+To read and modify its metadata,
+```
+example_nwb = io.read()
+print(example_nwb.subject)
 ```
 
 ## Data structure (DATASTORE)
@@ -149,3 +155,139 @@ project_folder/
                     *analyzer.zarr/
                     sync/
 ```
+
+## Upload to Dandi (LOCAL MACHINE)
+The nwb files are then uploaded to an online Dandi dataset in a flattened data structure of `mouse_id\*.nwb`.
+
+First, create a new Dandi dataset on the website if hasn't done so.
+
+Then, on local machine, `cd nwr`, then
+```bash
+bash upload_nwb_to_dandi.sh DANDI_DATASET_ID(6 digits) \
+'/Volumes/INCR-NolanLab/ActiveProjects/Yiming/NWR1/processed' \
+'/Volumes/INCR-NolanLab/ActiveProjects/Yiming/NWR1/dandi_upload'
+```
+This will create a folder `/Volumes/INCR-NolanLab/ActiveProjects/Yiming/NWR1/dandi_upload`.
+
+## Further analyses
+First, `cd nwr`.
+
+### 1. Behaviour (LOCAL MACHINE)
+To compute speeds, stops, and licks with position, run all in `behaviour/` except from `util.py`. This will plot figures separately per mouse per day per trial_type. For test days, reward availability (test_blocks) is plotted independently. `stops.py` also compared the number of trials required by each genotype to realise the transition between test_blocks. The threshold used to classify stops/stationary timestamps is 3cm/s (from mecpy), it's different to the 5cm/s used in Junji & Teris' data.
+
+### 2. Neural activity heatmap (EDDIE)
+Before doing any analyses on ephys data, we should first create an inventory of all the units in all the nwb files. Only after this we can assign parallel tasks to each unit. To do this,
+```bash
+qsub units/prepare_nwb_units.sh
+```
+This creates `nwb_units.jsonl` in working directory.
+
+Then, to generate heatmaps for each session,
+```bash
+```
+
+### 3. Ramping classification and spatial information analysis (EDDIE)
+Ramping cells are classified based on their firing rate gradient before (outbound) and after (homebound) reward zone. To run all the nwb files that have been generated,
+```bash
+uv run ramps/ramps_on_eddie.py --all
+```
+To selectively run for certain mice and days,
+```bash
+uv run ramps/ramps_on_eddie.py --mice 1,2 --days 1,2
+```
+Each job will create a separate folder with the date running the job as the name in `/exports/eddie/scratch/s2155699/ephys/ramps/ramps_results`, the results are stored in subfolder called `tasks`.
+
+To stage out,
+```bash
+qsub ramps/stageout_ramps.sh
+```
+This will reshape data structure from
+```
+ramps/
+    ramping_comparison_logs/
+    ramps_results/
+        run_date/
+            many_jsons
+            logs/
+            numba_cache/
+            input/
+            tasks/
+                task_id/
+                    experiment_M*_D*_unit*_results.csv
+                    experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.png
+                    experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.npz
+```
+on EDDIE, to
+```
+analysis/ramps/
+    results/
+        mouse_id/
+            day/
+                experiment_M*_D*_unit*_results.csv
+                experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.png
+                experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.npz
+```
+on datastore. **Importantly, if different job folders contain the same session, only the latest one will be staged out.** This was carried out by `select_results_to_stageout.py`
+
+To cleanup,
+```bash
+qsub ramps/cleanup.sh
+```
+This will delete the numba_cache, logs, inputs folders in *ALL* job folders doing ramping classification.
+
+The tasks folder contains the results for each unit, including a csv, figues of tuning curve and fitted lines, and npz files containing firing rate. **ONLY DELETE THE TASKS FOLDERS AFTER DOUBLE CHEKING THEY ARE TRUELLY NOT NEEDED ANYMORE**. To delete the tasks folders, add an argument:
+```bash
+qsub ramps/cleanup.sh --delete-outputs
+```
+
+TODO!!!!!!!!!!!!!! Finally, analyse the results. This will stage in ramps results from datastore in datastore format first so it's better to cleanup before doing these analyses.
+
+To concatenate all the individual units' results,
+```bash
+uv run ramps/concat_csv.py
+```
+This will simply create a big `ramps_classification.csv` in `/exports/eddie/scratch/s2155699/ephys/ramps/ramps_results`.
+
+To compare ramps between test blocks and between genotypes,
+```bash
+mkdir -p /exports/eddie/scratch/s2155699/ephys/ramps/ramping_comparison_logs
+qsub ramps/run_ramping_comparison.sh
+```
+
+The script also performs staging out automatically. So the final data structure on datastore should look like:
+```
+analysis/ramps/
+    results/
+        mouse_id/
+            day/
+                experiment_M*_D*_unit*_results.csv
+                experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.png
+                experiment_training/test_M*_D*_unit-*_trial_type-*_test_block-*.npz
+    combined/ (ramping_comparison.py results)
+        ramps_classification.csv
+        figs/
+            ramping_cells_trial_type-*_test_block-*.png (created by ramping_comparison.py)
+        stats/
+            right_now_it_is_empty
+```
+
+If pynts has been modified, update its version at the veryyyyyy beginning:
+```bash
+uv add "pynts @ git+https://github.com/yz753/pynts.git@NWR1"
+```
+The NWR1 branch is dedicated to my project. If running for Junji & Teris' data, use the main branch.
+
+### 4. GLM-HMM (EDDIE)
+
+### 5. Decoding (EDDIE)
+The script runs the combination of two decoders (Bayesian and DeepNet) and two testing schemes (training on 80% of all test blocks' data & testing on remaining vs training on 80% of test block 0 data & testing on 20% block 0 and all block 1 & 2 data). Two loss functions for DeepNet can be chosen: cross entropy and wasserstein. The latter takes the vals of position error into account but makes the model too conservative on the prediction (the two ends of the track are not predicted). So cross entropy is set as default.
+
+The decoder requires `nwb_units.jsonl`, then
+```bash
+bash decoder/run_decoder.sh --mice 1 --days 1
+```
+Use `--all` to run all sessions, and `--loss-fn` to define loss function for DeepNet.
+
+This will stage in, process, and stage out necessary files.
+
+### 6. Task-anchored & task-independent classification (EDDIE)
