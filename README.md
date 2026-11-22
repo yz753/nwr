@@ -8,13 +8,13 @@ uv run write_filepaths.py
 Then `git push`.
 On EDDIE, `cd REPO`, `git pull`, and
 ```bash
-uv run sort_on_eddie.py --mice 1,2 --days 1,2 --sessions VR -- protocol kilosort4A
+uv run sort_on_eddie.py --mice 1,2 --days 1,2 --sessions VR --protocol kilosort4A
 ```
 This will spikesort M1_D1, M1_D2, M2_D1, M2_D2 separately.
 
 To concatenate VR and OF sessions,
 ```bash
-uv run sort_on_eddie.py --mice 1,2 --days 1,2 --sessions VR,OF -- protocol kilosort4A
+uv run sort_on_eddie.py --mice 1,2 --days 1,2 --sessions VR,OF --protocol kilosort4A
 ```
 If analysing for another experiment, change the default values of `--data_folder` and `--derive_folder`.
 
@@ -27,7 +27,7 @@ Cropping regions for tongue and eye are manually defined. To do this, open avi f
 
 On EDDIE, `cd REPO`, `git pull`, and
 ```bash
-uv run pose_estimation_on_eddie.py --mice=1,2 --days=1,2 --sessions=VR,OF --bodyparts=eye,tongue
+uv run pose_estimation_on_eddie.py --mice 1,2 --days 1,2 --sessions VR,OF --bodyparts eye,tongue
 ```
 The logic is the same as `sort_on_eddie.py` except that VR and OF are not concantenated.
 
@@ -35,7 +35,7 @@ If analysing for another experiment, change the default values of `--data_folder
 
 The DLC models used by the scripts were trained by Harry. They need be copied from `/exports/cmvm/datastore/sbms/groups/INCR-NolanLab/ActiveProjects/Yiming/NWR1/video/models` to `/exports/eddie/scratch/s2155699/ephys/video/models` if not present on EDDIE before running the analysis.
 
-Both scripts automatically stage in and out files before and after running the core analyses.
+Both scripts automatically stage in and out files.
 
 ## Fine tune licks (LOCAL MACHINE)
 The DLC results are suboptimal. To reduce false positive, on local machine, `cd lick_detection` then 
